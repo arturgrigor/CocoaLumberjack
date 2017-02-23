@@ -60,7 +60,9 @@
 // If a thread attempts to issue a log statement when the queue is already maxed out,
 // the issuing thread will block until the queue size drops below the max again.
 
-#define LOG_MAX_QUEUE_SIZE 1000 // Should not exceed INT32_MAX
+#ifndef LOG_MAX_QUEUE_SIZE
+    #define LOG_MAX_QUEUE_SIZE 1000 // Should not exceed INT32_MAX
+#endif
 
 // The "global logging queue" refers to [DDLog loggingQueue].
 // It is the queue that all log statements go through.
