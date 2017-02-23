@@ -215,6 +215,20 @@ NSString * DDExtractFileNameWithoutExtension(const char *filePath, BOOL copy);
 @property (class, nonatomic, strong, readonly) DDLog *sharedInstance;
 
 /**
+ Specifies the maximum queue size of the logging thread.
+ 
+ Since most logging is asynchronous, its possible for rogue threads to flood the logging queue.
+ That is, to issue an abundance of log statements faster than the logging thread can keepup.
+ Typically such a scenario occurs when log statements are added haphazardly within large loops,
+ but may also be possible if relatively slow loggers are being used.
+ 
+ This property caps the queue size at a given number of outstanding log statements.
+ If a thread attempts to issue a log statement when the queue is already maxed out,
+ the issuing thread will block until the queue size drops below the max again.
+ */
+@property (class, nonatomic) NSUInteger loggingMaxQueueSize;
+
+/**
  * Provides access to the underlying logging queue.
  * This may be helpful to Logger classes for things like thread synchronization.
  **/

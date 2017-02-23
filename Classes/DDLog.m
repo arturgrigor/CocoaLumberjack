@@ -49,21 +49,6 @@
 
 #define NSLogDebug(frmt, ...) do{ if(DD_DEBUG) NSLog((frmt), ##__VA_ARGS__); } while(0)
 
-// Specifies the maximum queue size of the logging thread.
-//
-// Since most logging is asynchronous, its possible for rogue threads to flood the logging queue.
-// That is, to issue an abundance of log statements faster than the logging thread can keepup.
-// Typically such a scenario occurs when log statements are added haphazardly within large loops,
-// but may also be possible if relatively slow loggers are being used.
-//
-// This property caps the queue size at a given number of outstanding log statements.
-// If a thread attempts to issue a log statement when the queue is already maxed out,
-// the issuing thread will block until the queue size drops below the max again.
-
-#ifndef LOG_MAX_QUEUE_SIZE
-    #define LOG_MAX_QUEUE_SIZE 1000 // Should not exceed INT32_MAX
-#endif
-
 // The "global logging queue" refers to [DDLog loggingQueue].
 // It is the queue that all log statements go through.
 //
@@ -106,6 +91,9 @@ static void *const GlobalLoggingQueueIdentityKey = (void *)&GlobalLoggingQueueId
 
 @implementation DDLog
 
+// Specifies the maximum queue size of the logging thread.
+static NSUInteger _loggingMaxQueueSize = 1000; // Should not exceed INT32_MAX
+
 // All logging statements are added to the same queue to ensure FIFO operation.
 static dispatch_queue_t _loggingQueue;
 
@@ -114,7 +102,7 @@ static dispatch_queue_t _loggingQueue;
 static dispatch_group_t _loggingGroup;
 
 // In order to prevent to queue from growing infinitely large,
-// a maximum size is enforced (LOG_MAX_QUEUE_SIZE).
+// a maximum size is enforced.
 static dispatch_semaphore_t _queueSemaphore;
 
 // Minor optimization for uniprocessor machines
@@ -157,7 +145,7 @@ static NSUInteger _numProcessors;
         void *nonNullValue = GlobalLoggingQueueIdentityKey; // Whatever, just not null
         dispatch_queue_set_specific(_loggingQueue, GlobalLoggingQueueIdentityKey, nonNullValue, NULL);
         
-        _queueSemaphore = dispatch_semaphore_create(LOG_MAX_QUEUE_SIZE);
+        _queueSemaphore = dispatch_semaphore_create(_loggingMaxQueueSize);
         
         // Figure out how many processors are available.
         // This may be used later for an optimization on uniprocessor machines.
@@ -213,6 +201,15 @@ static NSUInteger _numProcessors;
     }
     
     return self;
+}
+
++ (NSUInteger)loggingMaxQueueSize {
+    return _loggingMaxQueueSize;
+}
+
++ (void)setLoggingMaxQueueSize:(NSUInteger)loggingMaxQueueSize {
+    _loggingMaxQueueSize = loggingMaxQueueSize;
+    _queueSemaphore = dispatch_semaphore_create(_loggingMaxQueueSize);
 }
 
 /**
